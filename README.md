@@ -22,18 +22,18 @@ Attia 是一款基于 Python + Flask 打造的高性能、企业级安全订阅�
 ### 1. 下载项目
 将本项目克隆或下载 `.zip` 压缩包并解压到您的服务器（推荐路径：`/root/AttiaProject`）。
 
-\`\`\`bash
-git clone https://github.com/您的用户名/AttiaProject.git
+```
+git clone https://github.com/knowbul1koli/Attia.git
 cd AttiaProject
-\`\`\`
+```
 
 ### 2. 赋予脚本执行权限并运行
 在安装前，**请确保您已经将您的域名（例如 `attia.yourdomain.com`）的 A 记录解析到了这台服务器的 IP 上**，并且在 Cloudflare 中**暂时关闭小黄云 (DNS Only)**。
 
-\`\`\`bash
+```
 chmod +x install.sh
 sudo ./install.sh
-\`\`\`
+```
 
 ### 3. 安装向导
 脚本将全自动为您完成以下工作：
