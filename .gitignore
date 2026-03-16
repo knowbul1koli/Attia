@@ -1,0 +1,15 @@
+# 数据库文件 (绝对不能上传)
+attia.db
+*.db
+*.sqlite3
+
+# 加密密钥 (绝对不能上传)
+attia.key
+
+# Python 缓存和日志
+__pycache__/
+*.pyc
+*.log
+
+# 前端未混淆的原始代码 (防止被别人直接看到逻辑)
+static/main.js

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attia Workspace</title>
+    <link rel="icon" href="/static/favicon.png?v=1" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 头部极速加载，彻底防止主题闪屏
+        const savedTheme = localStorage.getItem('attia_theme') || 'dark';
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+    </script>
+    <style>
+        body { transition: background-color 0.3s, color 0.3s; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .glass-card { background: rgba(var(--bs-body-bg-rgb), 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(128,128,128,0.2); border-radius: 12px; }
+        .navbar-brand { font-weight: 900; letter-spacing: 2px; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sub-btn-group .btn { border: 1px solid rgba(128,128,128,0.3); font-weight: 600; padding: 0.5rem 1rem; }
+        .sub-btn-group .btn:hover { background: rgba(128,128,128,0.1); }
+        .url-display-box { background: var(--bs-tertiary-bg); color: #10b981; border: 1px solid rgba(128,128,128,0.3); font-family: monospace; border-radius: 6px; padding: 10px; word-break: break-all; display: none; transition: opacity 0.3s; }
+    </style>
+</head>
+<body data-token="{{ user['sub_token'] }}">
+    <nav class="navbar navbar-expand border-bottom" style="border-color: rgba(128,128,128,0.2)!important; background: rgba(var(--bs-body-bg-rgb), 0.9);">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand" href="#">ATTIA</a>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <select id="langSwitch" class="form-select form-select-sm bg-body text-body" style="width: auto;">
+                    <option value="zh">中文 (Mandarin)</option>
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                </select>
+                <button id="themeToggle" class="btn btn-sm btn-outline-secondary"><i class="bi bi-moon-stars"></i></button>
+                <span class="text-body small d-none d-sm-inline">{{ user['username'] }}</span>
+                {% if user['is_admin'] %}<a href="/admin" class="btn btn-sm btn-outline-warning" data-i18n="manage">管理</a>{% endif %}
+                <a href="/logout" class="btn btn-sm btn-outline-danger" data-i18n="logout">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="card glass-card mb-4 shadow-sm border-info">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-1"><i class="bi bi-hdd-network text-info me-2"></i><span data-i18n="my_dist">我的订阅中心</span></h5>
+                <p class="text-muted small mb-3" data-i18n="dist_desc">选择您的客户端。点击按钮即可将链接复制到剪贴板。</p>
+                <div class="d-flex gap-2 flex-wrap sub-btn-group mb-3">
+                    <button class="btn btn-body" onclick="copySub('universal', 'self')"><i class="bi bi-globe me-1"></i> 通用 / v2rayN</button>
+                    <button class="btn btn-body" onclick="copySub('clash', 'self')"><i class="bi bi-cat me-1"></i> Clash / Meta</button>
+                    <button class="btn btn-body" onclick="copySub('shadowrocket', 'self')"><i class="bi bi-rocket-takeoff me-1"></i> Shadowrocket</button>
+                    <button class="btn btn-body" onclick="copySub('singbox', 'self')"><i class="bi bi-box me-1"></i> Sing-Box</button>
+                    <button class="btn btn-body" onclick="copySub('surge', 'self')"><i class="bi bi-lightning-charge me-1"></i> Surge</button>
+                    <button class="btn btn-body" onclick="copySub('quantumultx', 'self')"><i class="bi bi-x-diamond me-1"></i> Quantumult X</button>
+                    <button class="btn btn-body" onclick="copySub('loon', 'self')"><i class="bi bi-balloon me-1"></i> Loon</button>
+                    <button class="btn btn-body" onclick="copySub('v2rayng', 'self')"><i class="bi bi-android2 me-1"></i> v2rayNG</button>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="shuffleSwitchSelf">
+                    <label class="form-check-label text-muted small fw-bold" for="shuffleSwitchSelf" data-i18n="shuffle_mode">启用节点顺序随机混淆 (超20个节点自动截断)</label>
+                </div>
+                <div id="urlBox-self" class="url-display-box mt-2">
+                    <span id="urlText-self"></span>
+                    <div class="text-end mt-2"><span class="badge bg-success opacity-75" data-i18n="copied">已复制成功！</span></div>
+                </div>
+            </div>
+        </div>
+
+        {% if not user['is_admin'] and user['username'] != 'Guest' %}
+        <div class="card glass-card mb-4 shadow-sm border-warning">
+            <div class="card-body p-4">
+                <button class="btn btn-outline-warning w-100 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#adminSubPanel">
+                    <i class="bi bi-star-fill me-2"></i><span data-i18n="admin_sub">管理员专属订阅下发</span>
+                </button>
+                <div class="collapse mt-3" id="adminSubPanel">
+                    <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>由系统管理员派发，各地区优选，上限10节点，已强制启用防探测混淆。</p>
+                    <div class="d-flex gap-2 flex-wrap sub-btn-group mb-3">
+                        <button class="btn btn-body" onclick="copySub('universal', 'admin')"><i class="bi bi-globe me-1"></i> 通用 / v2rayN</button>
+                        <button class="btn btn-body" onclick="copySub('clash', 'admin')"><i class="bi bi-cat me-1"></i> Clash / Meta</button>
+                        <button class="btn btn-body" onclick="copySub('shadowrocket', 'admin')"><i class="bi bi-rocket-takeoff me-1"></i> Shadowrocket</button>
+                        <button class="btn btn-body" onclick="copySub('singbox', 'admin')"><i class="bi bi-box me-1"></i> Sing-Box</button>
+                        <button class="btn btn-body" onclick="copySub('surge', 'admin')"><i class="bi bi-lightning-charge me-1"></i> Surge</button>
+                        <button class="btn btn-body" onclick="copySub('quantumultx', 'admin')"><i class="bi bi-x-diamond me-1"></i> Quantumult X</button>
+                        <button class="btn btn-body" onclick="copySub('loon', 'admin')"><i class="bi bi-balloon me-1"></i> Loon</button>
+                        <button class="btn btn-body" onclick="copySub('v2rayng', 'admin')"><i class="bi bi-android2 me-1"></i> v2rayNG</button>
+                    </div>
+                    <div id="urlBox-admin" class="url-display-box mt-2 border-warning text-warning">
+                        <span id="urlText-admin"></span>
+                        <div class="text-end mt-2"><span class="badge bg-warning text-dark opacity-75" data-i18n="copied">已复制成功！</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-lg-5">
+                <div class="card glass-card shadow-sm mb-4 h-100">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                        <ul class="nav nav-tabs border-0" role="tablist">
+                            <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#xui-pane" data-i18n="sync_panels">同步 3x-ui</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#manual-pane" data-i18n="manual_import">手动导入</button></li>
+                        </ul>
+                    </div>
+                    <div class="card-body tab-content pt-4 p-3 p-md-4">
+                        <div class="tab-pane fade show active" id="xui-pane">
+                            <div class="d-flex justify-content-end mb-2"><button class="btn btn-sm btn-outline-info shadow-sm fw-bold px-3" style="border-radius: 6px;" onclick="addPanelRow('panelsContainer')" data-i18n="add_panel">+ 添加源</button></div>
+                            <div id="panelsContainer">
+                                <div class="panel-row border rounded p-2 mb-2 bg-body-tertiary">
+                                    <input type="text" class="form-control form-control-sm mb-2 p-url bg-body text-body border-secondary fw-bold" placeholder="Panel URL">
+                                    <div class="d-flex flex-column flex-md-row gap-2">
+                                        <input type="text" class="form-control form-control-sm p-user bg-body text-body border-secondary" placeholder="User">
+                                        <input type="password" class="form-control form-control-sm p-pwd bg-body text-body border-secondary" placeholder="Pass">
+                                        <button class="btn btn-sm btn-danger mt-2 mt-md-0" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-info w-100 fw-bold mt-2 shadow-sm py-2" style="border-radius: 10px;" onclick="syncPanels('panelsContainer', null, 'syncBtn')" id="syncBtn" data-i18n="start_sync">开始提取</button>
+                        </div>
+                        <div class="tab-pane fade" id="manual-pane">
+                            <form action="/add_batch" method="POST">
+                                <textarea class="form-control mb-3 bg-body text-body border-secondary shadow-sm font-monospace" style="border-radius: 12px; padding:15px;" name="links" rows="7" required></textarea>
+                                <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2" style="border-radius: 10px;" data-i18n="import_btn">导入节点</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="card glass-card shadow-sm h-100">
+                    <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold m-0"><i class="bi bi-shield-check text-success me-2"></i><span data-i18n="node_list">我的加密节点库</span></h6>
+                        <a href="/clear_my_nodes" class="btn btn-sm btn-outline-danger shadow-sm fw-bold px-3" style="border-radius: 8px;" onclick="return confirm('确定要一键清空所有节点吗？')" data-i18n="clear_all">一键清空</a>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover m-0 bg-transparent text-nowrap">
+                            <tbody>
+                                {% for node in nodes %}
+                                <tr>
+                                    <td class="ps-3 ps-md-4 align-middle text-body fw-bold py-3"><i class="bi bi-hdd text-info me-2"></i>{{ node['remark'] }}</td>
+                                    <td class="text-end pe-3 pe-md-4"><a href="/delete/{{ node['id'] }}" class="btn btn-sm btn-outline-danger border-0 fw-bold"><i class="bi bi-trash3"></i> <span class="d-none d-sm-inline" data-i18n="delete">删除</span></a></td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="2" class="text-center py-5 text-muted small fw-bold" data-i18n="no_nodes">暂无数据</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/main-obfuscated.js"></script>
+</body>
+</html>

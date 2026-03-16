@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attia - 网关</title>
+    <link rel="icon" href="/static/favicon.png?v=1" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script>
+        // 头部极速执行：防止主题白屏闪烁
+        const savedTheme = localStorage.getItem('attia_theme') || 'dark';
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+    </script>
+    <style>
+        body { transition: background-color 0.3s, color 0.3s; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; min-height: 100vh; }
+        .auth-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { width: 100%; max-width: 420px; padding: 3rem 2.5rem; border-radius: 16px; background: rgba(var(--bs-body-bg-rgb), 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(128,128,128,0.2); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .brand { font-size: 2.5rem; font-weight: 900; text-align: center; margin-bottom: 0.5rem; letter-spacing: 4px; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .form-control { background-color: rgba(var(--bs-tertiary-bg-rgb), 0.8); border: 1px solid rgba(128,128,128,0.3); color: var(--bs-body-color); padding: 0.75rem 1rem; border-radius: 8px; }
+        .form-control:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2); }
+        .btn-primary-custom { background: linear-gradient(135deg, #38bdf8, #3b82f6); border: none; font-weight: 600; padding: 0.75rem; border-radius: 8px; color: #fff; transition: all 0.3s; }
+        .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.4); }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand border-bottom" style="border-color: rgba(128,128,128,0.2)!important;">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand fw-bold text-body" href="#">ATTIA</a>
+            <div class="d-flex gap-2 gap-md-3 flex-wrap">
+                <select id="langSwitch" class="form-select form-select-sm bg-body text-body" style="width: auto;">
+                    <option value="zh">中文 (Mandarin)</option>
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                </select>
+                <button id="themeToggle" class="btn btn-sm btn-outline-secondary"><i class="bi bi-moon-stars"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="brand">ATTIA</div>
+            <div class="text-center small text-muted mb-4 text-uppercase fw-bold" style="letter-spacing: 1px;" data-i18n="{% if is_first %}sys_init{% elif mode == 'register' %}create_acc{% else %}sec_gate{% endif %}">
+                {% if is_first %}系统初始化{% elif mode == 'register' %}创建账户{% else %}安全网关认证{% endif %}
+            </div>
+            
+            {% if error %}<div class="alert alert-danger py-2 text-center small">{{ error }}</div>{% endif %}
+            {% if is_first %}<div class="alert alert-warning py-2 text-center small fw-bold" data-i18n="admin_warn">首位注册用户将获得系统管理员权限。</div>{% endif %}
+
+            <form method="POST" action="{% if mode == 'register' %}/register{% else %}/login{% endif %}">
+                <div class="mb-3">
+                    <label class="form-label small text-uppercase fw-bold text-muted ps-1" data-i18n="username">账户</label>
+                    <input type="text" class="form-control shadow-sm" name="username" required autocomplete="off" placeholder="账户">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small text-uppercase fw-bold text-muted ps-1" data-i18n="password">密码</label>
+                    <input type="password" class="form-control shadow-sm" name="password" required placeholder="密码">
+                </div>
+                <button type="submit" class="btn btn-primary-custom w-100 mb-3 shadow-sm" data-i18n="{% if mode == 'register' %}init_prof{% else %}auth{% endif %}">
+                    {% if mode == 'register' %}初始化管理账户{% else %}安全登入{% endif %}
+                </button>
+            </form>
+
+            <div class="d-flex flex-column gap-2 text-center mt-4 pt-3 border-top" style="border-color: rgba(128,128,128,0.2)!important;">
+                {% if mode == 'login' and not is_first %}
+                    <a href="/register" class="text-decoration-none text-info fw-bold" data-i18n="create_new">注册新账户</a>
+                    <a href="/guest_login" class="btn btn-outline-secondary w-100 py-2 mt-2 shadow-sm" style="border-radius: 8px; font-weight: 600;" data-i18n="guest_mode">以游客身份无痕进入</a>
+                {% elif mode == 'register' and not is_first %}
+                    <a href="/login" class="text-decoration-none text-info fw-bold" data-i18n="back_login">返回登入</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script src="/static/main-obfuscated.js"></script>
+</body>
+</html>

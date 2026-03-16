@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attia - Admin Management</title>
+    <link rel="icon" href="/static/favicon.png?v=1" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const savedTheme = localStorage.getItem('attia_theme') || 'dark';
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .glass-card { background: rgba(var(--bs-body-bg-rgb), 0.7); backdrop-filter: blur(12px); border-radius: 12px; }
+    </style>
+</head>
+<body data-token="{{ user['sub_token'] }}">
+    <nav class="navbar navbar-expand border-bottom mb-4" style="background: rgba(var(--bs-body-bg-rgb), 0.9);">
+        <div class="container-fluid px-3 px-md-4 flex-wrap">
+            <a class="navbar-brand fw-bold text-warning" href="#">ATTIA ADMIN</a>
+            <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                <a href="/" class="btn btn-sm btn-outline-light">返回主控制台</a>
+                <a href="/logout" class="btn btn-sm btn-danger">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card glass-card shadow-sm">
+            <div class="card-header pt-3 pb-2"><h5 class="fw-bold">全站用户管理与订阅下发</h5></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover m-0 text-nowrap">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-3 ps-md-4">UID</th>
+                                <th>用户名</th>
+                                <th>明文密码 (仅Admin可见)</th>
+                                <th class="text-end pe-3 pe-md-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td class="ps-3 ps-md-4 align-middle">{{ u['id'] }}</td>
+                                <td class="align-middle fw-bold text-info">{{ u['username'] }}</td>
+                                <td class="align-middle text-danger font-monospace">{{ u['password_plain'] }}</td>
+                                <td class="text-end pe-3 pe-md-4">
+                                    <button class="btn btn-sm btn-warning fw-bold" onclick="openAdminModal('{{ u['id'] }}', '{{ u['username'] }}')">设置订阅</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adminSubModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-body border-warning border-2">
+                <div class="modal-header border-bottom border-warning border-opacity-25">
+                    <h5 class="modal-title fw-bold">为 <span id="modalUsername" class="text-warning"></span> 下发独立订阅</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item"><button class="nav-link active px-2 px-md-3" data-bs-toggle="pill" data-bs-target="#m-xui">3x-ui 拉取</button></li>
+                        <li class="nav-item"><button class="nav-link px-2 px-md-3" data-bs-toggle="pill" data-bs-target="#m-manual">手动添加</button></li>
+                        <li class="nav-item"><button class="nav-link px-2 px-md-3" data-bs-toggle="pill" data-bs-target="#m-manage" onclick="loadAdminNodes()">管理已下发</button></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="m-xui">
+                            <div class="d-flex justify-content-end mb-2"><button class="btn btn-sm btn-outline-info" onclick="addPanelRow('adminPanels')">+ 添加源</button></div>
+                            <div id="adminPanels"></div>
+                            <button class="btn btn-info w-100 fw-bold mt-2" id="adminSyncBtn" onclick="syncPanels('adminPanels', currentTargetUid, 'adminSyncBtn')">拉取并下发</button>
+                        </div>
+                        <div class="tab-pane fade" id="m-manual">
+                            <textarea class="form-control mb-3 font-monospace" id="adminManualLinks" rows="5" placeholder="粘贴节点..."></textarea>
+                            <button class="btn btn-primary w-100 fw-bold" onclick="adminAddManual()">下发至该用户</button>
+                        </div>
+                        <div class="tab-pane fade" id="m-manage">
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-danger" onclick="adminClearNodes()">一键清空该用户Admin订阅</button>
+                            </div>
+                            <ul class="list-group" id="adminNodeList"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTargetUid = null;
+        const modal = new bootstrap.Modal(document.getElementById('adminSubModal'));
+        function openAdminModal(uid, username) {
+            currentTargetUid = uid; document.getElementById('modalUsername').innerText = username;
+            document.getElementById('adminPanels').innerHTML = ''; addPanelRow('adminPanels'); modal.show();
+        }
+        async function loadAdminNodes() {
+            const list = document.getElementById('adminNodeList'); list.innerHTML = '<li class="list-group-item">加载中...</li>';
+            const res = await fetch(`/api/admin/user/${currentTargetUid}/nodes`); const data = await res.json(); list.innerHTML = '';
+            data.nodes.forEach(n => {
+                list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-secondary text-body text-break"><span class="text-truncate" style="max-width: 75%;">${n.remark}</span><button class="btn btn-sm btn-outline-danger" onclick="adminDelNode(${n.id})">删除</button></li>`;
+            });
+            if(data.nodes.length === 0) list.innerHTML = '<li class="list-group-item text-center">暂未下发节点</li>';
+        }
+        async function adminAddManual() {
+            const text = document.getElementById('adminManualLinks').value; const links = text.split('\n').map(l => l.trim()).filter(l => l);
+            if(!links.length) return;
+            await fetch(`/api/admin/user/${currentTargetUid}/add_nodes`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({links}) });
+            alert('下发成功！'); document.getElementById('adminManualLinks').value = ''; loadAdminNodes();
+        }
+        async function adminDelNode(nid) { await fetch(`/delete/${nid}`); loadAdminNodes(); }
+        async function adminClearNodes() { if(confirm('清空该用户的专属订阅？')) { await fetch(`/api/admin/user/${currentTargetUid}/clear_nodes`, {method:'DELETE'}); loadAdminNodes(); } }
+    </script>
+    <script src="/static/main-obfuscated.js"></script>
+</body>
+</html>
